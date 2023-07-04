@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Post, Category, Location, Comment
+from .models import Post, Category, Location
 
 
 class AdminPost(admin.ModelAdmin):
@@ -16,15 +16,9 @@ class AdminPost(admin.ModelAdmin):
         'category',
         'location',
     )
-    search_fields = (
-        'title',
-    )
-    list_filter = (
-        'category',
-    )
-    list_display_links = (
-        'title',
-    )
+    search_fields = ('title',)
+    list_filter = ('category',)
+    list_display_links = ('title',)
 
 
 admin.site.register(Post, AdminPost)

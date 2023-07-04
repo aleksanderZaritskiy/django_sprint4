@@ -7,7 +7,10 @@ from django.db.models import Count
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.generic import (
-    ListView, CreateView, UpdateView, DetailView,
+    ListView,
+    CreateView,
+    UpdateView,
+    DetailView,
 )
 
 from .forms import PostForm, CommentForm, UserForm
@@ -16,13 +19,15 @@ from .models import Post, User, Comment, Category
 
 def index(request):
     template_name = 'blog/index.html'
-    post_list = Post.objects.filter(
-        is_published=True,
-        category__is_published=True,
-        pub_date__lte=timezone.now(),
-    ).annotate(
-        comment_count=Count('comment')
-    ).order_by('-pub_date')
+    post_list = (
+        Post.objects.filter(
+            is_published=True,
+            category__is_published=True,
+            pub_date__lte=timezone.now(),
+        )
+        .annotate(comment_count=Count('comment'))
+        .order_by('-pub_date')
+    )
     paginator = Paginator(post_list, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
@@ -36,16 +41,22 @@ def user_profile(request, username):
     template_name = 'blog/profile.html'
     profile = get_object_or_404(User, username=username)
     if str(request.user) == username:
-        post_list = Post.objects.filter(
-            author__username=username
-        ).annotate(comment_count=Count('comment')).order_by('-pub_date')
+        post_list = (
+            Post.objects.filter(author__username=username)
+            .annotate(comment_count=Count('comment'))
+            .order_by('-pub_date')
+        )
     else:
-        post_list = Post.objects.filter(
-            author__username=username,
-            is_published=True,
-            category__is_published=True,
-            pub_date__lte=timezone.now(),
-        ).annotate(comment_count=Count('comment')).order_by('-pub_date')
+        post_list = (
+            Post.objects.filter(
+                author__username=username,
+                is_published=True,
+                category__is_published=True,
+                pub_date__lte=timezone.now(),
+            )
+            .annotate(comment_count=Count('comment'))
+            .order_by('-pub_date')
+        )
     paginator = Paginator(post_list, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
@@ -82,12 +93,16 @@ class CategoryPost(ListView):
     paginate_by = 10
 
     def get_queryset(self):
-        return Post.objects.filter(
-            category__slug=self.kwargs['category_slug'],
-            is_published=True,
-            category__is_published=True,
-            pub_date__lte=timezone.now(),
-            ).annotate(comment_count=Count('comment')).order_by('-pub_date')
+        return (
+            Post.objects.filter(
+                category__slug=self.kwargs['category_slug'],
+                is_published=True,
+                category__is_published=True,
+                pub_date__lte=timezone.now(),
+            )
+            .annotate(comment_count=Count('comment'))
+            .order_by('-pub_date')
+        )
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -111,17 +126,16 @@ class PostDetail(DetailView):
             return Post.objects.filter(
                 is_published=True,
                 category__is_published=True,
-                id=self.kwargs['post_pk']
-                )
+                id=self.kwargs['post_pk'],
+            )
         return Post.objects.filter(id=self.kwargs['post_pk'])
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['form'] = CommentForm()
-        context['comments'] = (
-            self.object.comment.select_related('author')
-            .order_by('created_at')
-        )
+        context['comments'] = self.object.comment.select_related(
+            'author'
+        ).order_by('created_at')
         return context
 
 
@@ -162,10 +176,7 @@ def edit_comment(request, post_pk, comment_id):
 @login_required
 def delete_comment(request, post_pk, comment_id):
     delete_comment = get_object_or_404(
-        Comment,
-        post_id=post_pk,
-        id=comment_id,
-        author__username=request.user
+        Comment, post_id=post_pk, id=comment_id, author__username=request.user
     )
     if request.method == "POST":
         delete_comment.delete()
@@ -193,9 +204,7 @@ class PostUpdateView(LoginRequiredMixin, UpdateView):
 
     def dispatch(self, request, *args, **kwargs):
         if self.get_object().author != self.request.user:
-            return redirect(
-                'blog:post_detail', post_pk=self.kwargs['post_id']
-            )
+            return redirect('blog:post_detail', post_pk=self.kwargs['post_id'])
         return super().dispatch(request, *args, **kwargs)
 
 
@@ -203,9 +212,7 @@ class PostUpdateView(LoginRequiredMixin, UpdateView):
 def delete_post(request, post_id):
     template_name = 'blog/post_form.html'
     delete_post = get_object_or_404(
-        Post,
-        pk=post_id,
-        author__username=request.user
+        Post, pk=post_id, author__username=request.user
     )
     if request.method == "POST":
         delete_post.delete()

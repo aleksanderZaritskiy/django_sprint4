@@ -2,7 +2,6 @@ from form.base_form_tester import BaseFormTester
 
 
 class CommentFormTester(BaseFormTester):
-
     @property
     def has_textarea(self):
         return True

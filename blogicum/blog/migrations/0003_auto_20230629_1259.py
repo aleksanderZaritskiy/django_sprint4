@@ -6,7 +6,6 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
         ('blog', '0002_auto_20230611_1957'),
@@ -15,54 +14,96 @@ class Migration(migrations.Migration):
     operations = [
         migrations.AlterModelOptions(
             name='category',
-            options={'verbose_name': 'категория', 'verbose_name_plural': 'Категории'},
+            options={
+                'verbose_name': 'категория',
+                'verbose_name_plural': 'Категории',
+            },
         ),
         migrations.AlterModelOptions(
             name='location',
-            options={'verbose_name': 'местоположение', 'verbose_name_plural': 'Местоположения'},
+            options={
+                'verbose_name': 'местоположение',
+                'verbose_name_plural': 'Местоположения',
+            },
         ),
         migrations.AlterModelOptions(
             name='post',
-            options={'verbose_name': 'публикация', 'verbose_name_plural': 'Публикации'},
+            options={
+                'verbose_name': 'публикация',
+                'verbose_name_plural': 'Публикации',
+            },
         ),
         migrations.AddField(
             model_name='post',
             name='image',
-            field=models.ImageField(blank=True, upload_to='posts_images', verbose_name='Фото'),
+            field=models.ImageField(
+                blank=True, upload_to='posts_images', verbose_name='Фото'
+            ),
         ),
         migrations.AlterField(
             model_name='category',
             name='is_published',
-            field=models.BooleanField(default=True, help_text='Снимите галочку, чтобы скрыть публикацию.', verbose_name='Опубликовано'),
+            field=models.BooleanField(
+                default=True,
+                help_text='Снимите галочку, чтобы скрыть публикацию.',
+                verbose_name='Опубликовано',
+            ),
         ),
         migrations.AlterField(
             model_name='category',
             name='slug',
-            field=models.SlugField(help_text='Идентификатор страницы для URL; разрешены символы латиницы, цифры, дефис и подчёркивание.', max_length=100, unique=True, verbose_name='Идентификатор'),
+            field=models.SlugField(
+                help_text='Идентификатор страницы для URL; разрешены символы латиницы, цифры, дефис и подчёркивание.',
+                max_length=100,
+                unique=True,
+                verbose_name='Идентификатор',
+            ),
         ),
         migrations.AlterField(
             model_name='location',
             name='is_published',
-            field=models.BooleanField(default=True, help_text='Снимите галочку, чтобы скрыть публикацию.', verbose_name='Опубликовано'),
+            field=models.BooleanField(
+                default=True,
+                help_text='Снимите галочку, чтобы скрыть публикацию.',
+                verbose_name='Опубликовано',
+            ),
         ),
         migrations.AlterField(
             model_name='post',
             name='author',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='post', to=settings.AUTH_USER_MODEL, verbose_name='Автор публикации'),
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name='post',
+                to=settings.AUTH_USER_MODEL,
+                verbose_name='Автор публикации',
+            ),
         ),
         migrations.AlterField(
             model_name='post',
             name='category',
-            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='posts', to='blog.category', verbose_name='Категория'),
+            field=models.ForeignKey(
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name='posts',
+                to='blog.category',
+                verbose_name='Категория',
+            ),
         ),
         migrations.AlterField(
             model_name='post',
             name='is_published',
-            field=models.BooleanField(default=True, help_text='Снимите галочку, чтобы скрыть публикацию.', verbose_name='Опубликовано'),
+            field=models.BooleanField(
+                default=True,
+                help_text='Снимите галочку, чтобы скрыть публикацию.',
+                verbose_name='Опубликовано',
+            ),
         ),
         migrations.AlterField(
             model_name='post',
             name='pub_date',
-            field=models.DateTimeField(help_text='Если установить дату и время в будущем — можно делать отложенные публикации.', verbose_name='Дата и время публикации'),
+            field=models.DateTimeField(
+                help_text='Если установить дату и время в будущем — можно делать отложенные публикации.',
+                verbose_name='Дата и время публикации',
+            ),
         ),
     ]

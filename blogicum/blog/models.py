@@ -45,27 +45,27 @@ class Post(PublishedModel):
     pub_date = models.DateTimeField(
         help_text='Если установить дату и время '
         'в будущем — можно делать отложенные публикации.',
-        verbose_name='Дата и время публикации'
+        verbose_name='Дата и время публикации',
     )
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         verbose_name='Автор публикации',
-        related_name='posts_user'
+        related_name='posts_user',
     )
     location = models.ForeignKey(
         Location,
         on_delete=models.SET_NULL,
         blank=True,
         null=True,
-        verbose_name='Местоположение'
+        verbose_name='Местоположение',
     )
     category = models.ForeignKey(
         Category,
         on_delete=models.SET_NULL,
         null=True,
         related_name='posts',
-        verbose_name='Категория'
+        verbose_name='Категория',
     )
     image = models.ImageField('Фото', upload_to='posts_images', blank=True)
 
