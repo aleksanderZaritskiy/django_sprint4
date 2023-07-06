@@ -17,6 +17,12 @@ from .forms import PostForm, CommentForm, UserForm
 from .models import Post, User, Comment, Category
 
 
+def pagination_page(request, arr, posts_per_page=10):
+    paginator = Paginator(arr, posts_per_page)
+    page_number = request.GET.get('page')
+    return paginator.get_page(page_number)
+
+
 def index(request):
     template_name = 'blog/index.html'
     post_list = (
@@ -28,19 +34,18 @@ def index(request):
         .annotate(comment_count=Count('comment'))
         .order_by('-pub_date')
     )
-    paginator = Paginator(post_list, 10)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
     context = {
-        'page_obj': page_obj,
+        'page_obj': pagination_page(request, post_list),
     }
+    print(type(request))
+    print(type(post_list))
     return render(request, template_name, context)
 
 
 def user_profile(request, username):
     template_name = 'blog/profile.html'
     profile = get_object_or_404(User, username=username)
-    if str(request.user) == username:
+    if request.user.username == username:
         post_list = (
             Post.objects.filter(author__username=username)
             .annotate(comment_count=Count('comment'))
@@ -57,12 +62,9 @@ def user_profile(request, username):
             .annotate(comment_count=Count('comment'))
             .order_by('-pub_date')
         )
-    paginator = Paginator(post_list, 10)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
     context = {
         'profile': profile,
-        'page_obj': page_obj,
+        'page_obj': pagination_page(request, post_list),
     }
     return render(request, template_name, context)
 
@@ -72,13 +74,6 @@ class EditUserProfile(LoginRequiredMixin, UpdateView):
     form_class = UserForm
     template_name = 'blog/user.html'
     slug_url_kwarg = 'username'
-
-    def get(self, request, **kwargs):
-        self.object = User.objects.get(username=self.request.user.username)
-        form_class = self.get_form_class()
-        form = self.get_form(form_class)
-        context = self.get_context_data(object=self.object, form=form)
-        return self.render_to_response(context)
 
     def get_object(self, queryset=None):
         return self.request.user
@@ -91,9 +86,15 @@ class CategoryPost(ListView):
     model = Post
     template_name = 'blog/category.html'
     paginate_by = 10
+    comment = None
 
     def get_queryset(self):
-        return (
+        self.comment = get_object_or_404(
+            Category,
+            slug=self.kwargs['category_slug'],
+            is_published=True,
+        )
+        queryset = (
             Post.objects.filter(
                 category__slug=self.kwargs['category_slug'],
                 is_published=True,
@@ -103,32 +104,30 @@ class CategoryPost(ListView):
             .annotate(comment_count=Count('comment'))
             .order_by('-pub_date')
         )
+        return queryset
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['category'] = get_object_or_404(
-            Category,
-            slug=self.kwargs['category_slug'],
-            is_published=True,
-        )
+        context['category'] = self.comment
         return context
 
 
 class PostDetail(DetailView):
     model = Post
     template_name = 'blog/detail.html'
-    pk_url_kwarg = 'post_pk'
+    pk_url_kwarg = 'post_id'
     context_object_name = 'post'
 
-    def get_queryset(self):
-        instance = get_object_or_404(Post, id=self.kwargs['post_pk'])
-        if self.request.user != instance.author:
-            return Post.objects.filter(
+    def get_object(self):
+        object = super(PostDetail, self).get_object()
+        if self.request.user != object.author:
+            object = get_object_or_404(
+                Post,
                 is_published=True,
                 category__is_published=True,
-                id=self.kwargs['post_pk'],
+                id=self.kwargs['post_id'],
             )
-        return Post.objects.filter(id=self.kwargs['post_pk'])
+        return object
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -140,47 +139,46 @@ class PostDetail(DetailView):
 
 
 @login_required
-def add_comment(request, post_pk):
-    post = get_object_or_404(Post, pk=post_pk)
+def add_comment(request, post_id):
+    post = get_object_or_404(Post, pk=post_id)
     form = CommentForm(request.POST)
     if form.is_valid():
         comment = form.save(commit=False)
         comment.author = request.user
         comment.post = post
         comment.save()
-    return redirect('blog:post_detail', post_pk=post_pk)
+    return redirect('blog:post_detail', post_id)
 
 
 @login_required
-def edit_comment(request, post_pk, comment_id):
+def edit_comment(request, post_id, comment_id):
     comment = get_object_or_404(
         Comment,
-        post_id=post_pk,
+        post_id=post_id,
         id=comment_id,
         author__username=request.user,
     )
-    if request.method == 'GET':
-        form = CommentForm(instance=comment)
-        context = {
-            'form': form,
-            'comment': comment,
-        }
+    form = CommentForm(instance=comment)
+    context = {
+        'form': form,
+        'comment': comment,
+    }
     if request.method == 'POST':
         form = CommentForm(request.POST, instance=comment)
         if form.is_valid():
             form.save()
-        return redirect('blog:post_detail', post_pk=post_pk)
+        return redirect('blog:post_detail', post_id)
     return render(request, 'blog/comment.html', context)
 
 
 @login_required
-def delete_comment(request, post_pk, comment_id):
+def delete_comment(request, post_id, comment_id):
     delete_comment = get_object_or_404(
-        Comment, post_id=post_pk, id=comment_id, author__username=request.user
+        Comment, post_id=post_id, id=comment_id, author__username=request.user
     )
     if request.method == "POST":
         delete_comment.delete()
-        return redirect('blog:post_detail', post_pk=post_pk)
+        return redirect('blog:post_detail', post_id)
     context = {
         'delete_comment': delete_comment,
     }
@@ -204,7 +202,7 @@ class PostUpdateView(LoginRequiredMixin, UpdateView):
 
     def dispatch(self, request, *args, **kwargs):
         if self.get_object().author != self.request.user:
-            return redirect('blog:post_detail', post_pk=self.kwargs['post_id'])
+            return redirect('blog:post_detail', self.kwargs['post_id'])
         return super().dispatch(request, *args, **kwargs)
 
 
