@@ -83,7 +83,7 @@ class EditUserProfile(LoginRequiredMixin, UpdateView):
 class CategoryPost(ListView):
     model = Post
     template_name = 'blog/category.html'
-    paginate_by = 10
+    paginate_by = POSTS_ON_PAGE
     category = None
 
     def get_queryset(self):
