@@ -30,7 +30,12 @@ DEBUG = True
 ALLOWED_HOSTS = [
     'localhost',
     '127.0.0.1',
+    'www.blogikum.pythonanywhere.com',
+    'blogikum.pythonanywhere.com',
 ]
+
+
+POSTS_ON_PAGE = 10
 
 CSRF_FAILURE_VIEW = 'pages.views.csrf_failure'
 

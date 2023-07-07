@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.paginator import Paginator
 from django.db.models import Count
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.generic import (
@@ -15,12 +16,12 @@ from django.views.generic import (
 
 from .forms import PostForm, CommentForm, UserForm
 from .models import Post, User, Comment, Category
+from blogicum.settings import POSTS_ON_PAGE
 
 
-def pagination_page(request, arr, posts_per_page=10):
-    paginator = Paginator(arr, posts_per_page)
-    page_number = request.GET.get('page')
-    return paginator.get_page(page_number)
+def pagination_page(POSTS_ON_PAGE, arr, page_number=None):
+    paginator = Paginator(arr, POSTS_ON_PAGE)
+    return paginator.get_page(page_number.GET.get('page'))
 
 
 def index(request):
@@ -35,10 +36,8 @@ def index(request):
         .order_by('-pub_date')
     )
     context = {
-        'page_obj': pagination_page(request, post_list),
+        'page_obj': pagination_page(POSTS_ON_PAGE, post_list, request),
     }
-    print(type(request))
-    print(type(post_list))
     return render(request, template_name, context)
 
 
@@ -64,7 +63,7 @@ def user_profile(request, username):
         )
     context = {
         'profile': profile,
-        'page_obj': pagination_page(request, post_list),
+        'page_obj': pagination_page(POSTS_ON_PAGE, post_list, request),
     }
     return render(request, template_name, context)
 
@@ -73,7 +72,6 @@ class EditUserProfile(LoginRequiredMixin, UpdateView):
     model = User
     form_class = UserForm
     template_name = 'blog/user.html'
-    slug_url_kwarg = 'username'
 
     def get_object(self, queryset=None):
         return self.request.user
@@ -86,10 +84,10 @@ class CategoryPost(ListView):
     model = Post
     template_name = 'blog/category.html'
     paginate_by = 10
-    comment = None
+    category = None
 
     def get_queryset(self):
-        self.comment = get_object_or_404(
+        self.category = get_object_or_404(
             Category,
             slug=self.kwargs['category_slug'],
             is_published=True,
@@ -108,7 +106,7 @@ class CategoryPost(ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['category'] = self.comment
+        context['category'] = self.category
         return context
 
 
@@ -120,13 +118,10 @@ class PostDetail(DetailView):
 
     def get_object(self):
         object = super(PostDetail, self).get_object()
-        if self.request.user != object.author:
-            object = get_object_or_404(
-                Post,
-                is_published=True,
-                category__is_published=True,
-                id=self.kwargs['post_id'],
-            )
+        if self.request.user != object.author and (
+            not object.is_published or not object.category.is_published
+        ):
+            raise Http404()
         return object
 
     def get_context_data(self, **kwargs):
@@ -158,15 +153,13 @@ def edit_comment(request, post_id, comment_id):
         id=comment_id,
         author__username=request.user,
     )
-    form = CommentForm(instance=comment)
+    form = CommentForm(request.POST or None, instance=comment)
     context = {
         'form': form,
         'comment': comment,
     }
-    if request.method == 'POST':
-        form = CommentForm(request.POST, instance=comment)
-        if form.is_valid():
-            form.save()
+    if form.is_valid():
+        form.save()
         return redirect('blog:post_detail', post_id)
     return render(request, 'blog/comment.html', context)
 
@@ -174,15 +167,18 @@ def edit_comment(request, post_id, comment_id):
 @login_required
 def delete_comment(request, post_id, comment_id):
     delete_comment = get_object_or_404(
-        Comment, post_id=post_id, id=comment_id, author__username=request.user
+        Comment,
+        post_id=post_id,
+        id=comment_id,
+        author__username=request.user,
     )
-    if request.method == "POST":
-        delete_comment.delete()
-        return redirect('blog:post_detail', post_id)
-    context = {
-        'delete_comment': delete_comment,
-    }
-    return render(request, 'blog/comment.html', context)
+    if request.method != "POST":
+        context = {
+            'delete_comment': delete_comment,
+        }
+        return render(request, 'blog/comment.html', context)
+    delete_comment.delete()
+    return redirect('blog:post_detail', post_id)
 
 
 class PostCreateView(LoginRequiredMixin, CreateView):
@@ -212,11 +208,10 @@ def delete_post(request, post_id):
     delete_post = get_object_or_404(
         Post, pk=post_id, author__username=request.user
     )
-    if request.method == "POST":
-        delete_post.delete()
-        return redirect('blog:profile', request.user)
-    else:
+    if request.method != "POST":
         context = {
             'post': delete_post,
         }
-    return render(request, template_name, context)
+        return render(request, template_name, context)
+    delete_post.delete()
+    return redirect('blog:profile', request.user)
