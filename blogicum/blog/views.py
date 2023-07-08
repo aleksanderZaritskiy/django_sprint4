@@ -1,5 +1,6 @@
 from django.utils import timezone
 
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.paginator import Paginator
@@ -16,12 +17,11 @@ from django.views.generic import (
 
 from .forms import PostForm, CommentForm, UserForm
 from .models import Post, User, Comment, Category
-from blogicum.settings import POSTS_ON_PAGE
 
 
-def pagination_page(POSTS_ON_PAGE, arr, page_number=None):
+def pagination_page(POSTS_ON_PAGE, arr, page_number):
     paginator = Paginator(arr, POSTS_ON_PAGE)
-    return paginator.get_page(page_number.GET.get('page'))
+    return paginator.get_page(page_number)
 
 
 def index(request):
@@ -36,7 +36,9 @@ def index(request):
         .order_by('-pub_date')
     )
     context = {
-        'page_obj': pagination_page(POSTS_ON_PAGE, post_list, request),
+        'page_obj': pagination_page(
+            settings.POSTS_ON_PAGE, post_list, request.GET.get('page')
+        ),
     }
     return render(request, template_name, context)
 
@@ -63,7 +65,9 @@ def user_profile(request, username):
         )
     context = {
         'profile': profile,
-        'page_obj': pagination_page(POSTS_ON_PAGE, post_list, request),
+        'page_obj': pagination_page(
+            settings.POSTS_ON_PAGE, post_list, request.GET.get('page')
+        ),
     }
     return render(request, template_name, context)
 
@@ -83,7 +87,7 @@ class EditUserProfile(LoginRequiredMixin, UpdateView):
 class CategoryPost(ListView):
     model = Post
     template_name = 'blog/category.html'
-    paginate_by = POSTS_ON_PAGE
+    paginate_by = settings.POSTS_ON_PAGE
     category = None
 
     def get_queryset(self):
